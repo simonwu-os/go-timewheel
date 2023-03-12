@@ -196,6 +196,9 @@ func (tw *TimeWheel) handleTick() {
 	///fix issue 28
 	tw.last_ticker_time = time.Now()
 
+	///add slice
+	var cycle_task []*Task
+
 	bucket := tw.buckets[tw.currentIndex]
 	for k, task := range bucket {
 		if task.stop {
@@ -218,12 +221,21 @@ func (tw *TimeWheel) handleTick() {
 		// circle
 		if task.circle == true {
 			tw.collectTask(task)
-			tw.putCircle(task, modeIsCircle)
+			if tw.calculateIndex(task.delay) == tw.currentIndex {
+				cycle_task = append(cycle_task, task)
+			} else {
+				tw.putCircle(task, modeIsCircle)
+			}
 			continue
 		}
 
 		// gc
 		tw.collectTask(task)
+	}
+
+	/// add tasks in the slice
+	for _, task := range cycle_task {
+		tw.putCircle(task, modeIsCircle)
 	}
 
 	if tw.currentIndex == tw.bucketsNum-1 {

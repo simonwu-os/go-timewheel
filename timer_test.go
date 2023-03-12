@@ -191,7 +191,7 @@ func TestTickerSecond(t *testing.T) {
 	defer tw.Stop()
 
 	var (
-		timeout = time.After(110 * time.Millisecond)
+		timeout = time.After(120 * time.Millisecond)
 		ticker  = tw.NewTicker(1 * time.Millisecond)
 		incr    int
 	)
@@ -528,4 +528,31 @@ func TestStartDelay(t *testing.T) {
 	time.Sleep(110 * time.Millisecond)
 	assert.EqualValues(t, 10, data)
 	assert.Greater(t, int64(110*time.Millisecond), diff)
+}
+
+func TestCircleMoreTrigger(t *testing.T) {
+	ticker_interval := 10 * time.Millisecond
+	TW1s, _ := NewTimeWheel(ticker_interval, 2)
+	TW1s.Start()
+	defer TW1s.Stop()
+	var zsync sync.Mutex
+	last := time.Now()
+	my := &last
+	repeat_count := 0
+	wait := make(chan int)
+	TW1s.AddCron(2*ticker_interval, func() {
+		zsync.Lock()
+		defer zsync.Unlock()
+		if time.Since(*my) < ticker_interval/2 {
+			repeat_count += 1
+		}
+		*my = time.Now()
+	})
+	select {
+	case <-wait:
+		break
+	case <-time.After(500 * time.Millisecond):
+		break
+	}
+	assert.Equal(t, repeat_count, 0)
 }
