@@ -97,7 +97,7 @@ func NewTimeWheel(tick time.Duration, bucketsNum int, options ...optionCall) (*T
 	tw := &TimeWheel{
 		// tick
 		tick:      tick,
-		tickQueue: make(chan time.Time, 10),
+		tickQueue: nil, ///make(chan time.Time, 10),
 
 		// store
 		bucketsNum:    bucketsNum,
@@ -133,7 +133,7 @@ func (tw *TimeWheel) Start() {
 }
 
 func (tw *TimeWheel) tickGenerator() {
-	if tw.tickQueue != nil {
+	if tw.tickQueue == nil {
 		return
 	}
 
@@ -151,7 +151,7 @@ func (tw *TimeWheel) tickGenerator() {
 
 func (tw *TimeWheel) schduler() {
 	queue := tw.ticker.C
-	if tw.tickQueue == nil {
+	if tw.tickQueue != nil {
 		queue = tw.tickQueue
 	}
 
