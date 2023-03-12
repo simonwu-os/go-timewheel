@@ -512,3 +512,20 @@ func TestAddRemove(t *testing.T) {
 	time.Sleep(2 * time.Second)
 	assert.EqualValues(t, 1000, incr)
 }
+
+func TestStartDelay(t *testing.T) {
+	TW50ms, _ := NewTimeWheel(50*time.Millisecond, 10)
+	TW50ms.Start()
+	defer TW50ms.Stop()
+
+	data := 0
+	now := time.Now()
+	diff := int64(0)
+	TW50ms.AfterFunc(100*time.Millisecond, func() {
+		data += 10
+		diff = int64(time.Since(now))
+	})
+	time.Sleep(110 * time.Millisecond)
+	assert.EqualValues(t, 10, data)
+	assert.Greater(t, int64(110*time.Millisecond), diff)
+}

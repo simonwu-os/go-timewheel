@@ -76,6 +76,9 @@ type TimeWheel struct {
 
 	currentIndex int
 
+	///fix issue 28: First delay will be longer
+	last_ticker_time time.Time
+
 	onceStart sync.Once
 
 	stopC chan struct{}
@@ -126,6 +129,8 @@ func (tw *TimeWheel) Start() {
 	tw.onceStart.Do(
 		func() {
 			tw.ticker = time.NewTicker(tw.tick)
+			///fix issue 28
+			tw.last_ticker_time = time.Now()
 			go tw.schduler()
 			go tw.tickGenerator()
 		},
@@ -188,6 +193,9 @@ func (tw *TimeWheel) handleTick() {
 	tw.Lock()
 	defer tw.Unlock()
 
+	///fix issue 28
+	tw.last_ticker_time = time.Now()
+
 	bucket := tw.buckets[tw.currentIndex]
 	for k, task := range bucket {
 		if task.stop {
@@ -237,7 +245,7 @@ func (tw *TimeWheel) AddCron(delay time.Duration, callback func()) *Task {
 }
 
 func (tw *TimeWheel) addAny(delay time.Duration, callback func(), circle, async bool) *Task {
-	if delay <= 0 {
+	if delay < tw.tick {
 		delay = tw.tick
 	}
 
@@ -272,8 +280,19 @@ func (tw *TimeWheel) putCircle(task *Task, circleMode bool) {
 }
 
 func (tw *TimeWheel) store(task *Task, circleMode bool) {
-	round := tw.calculateRound(task.delay)
-	index := tw.calculateIndex(task.delay)
+
+	delay_time := task.delay
+	///fix issue 28
+	lapsed := time.Since(tw.last_ticker_time)
+	if lapsed < tw.tick {
+		delay_time = delay_time + lapsed - tw.tick + tw.tick>>1
+		if circleMode {
+			delay_time += tw.tick
+		}
+	}
+	///end of fixed issue 28
+	round := tw.calculateRound(delay_time)
+	index := tw.calculateIndex(delay_time)
 
 	if round > 0 && circleMode {
 		task.round = round - 1
